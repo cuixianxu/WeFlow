@@ -160,7 +160,7 @@ export const createDefaultExportOptions = (): import('./types').ExportOptions =>
     start: new Date(new Date().setHours(0, 0, 0, 0)),
     end: new Date()
   },
-  useAllTime: false,
+  useAllTime: true,
   exportAvatars: true,
   exportMedia: true,
   exportImages: true,

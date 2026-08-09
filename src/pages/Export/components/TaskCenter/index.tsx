@@ -1,5 +1,5 @@
-import React, { memo } from 'react'
-import { CheckCircle2, XCircle, Loader2, PlayCircle, PauseCircle, Trash2, StopCircle } from 'lucide-react'
+import React, { memo, useState } from 'react'
+import { CheckCircle2, XCircle, Loader2, PlayCircle, PauseCircle, Trash2, StopCircle, Copy, Check } from 'lucide-react'
 import type { ExportTask } from '../../types'
 import type { BackgroundTaskRecord } from '../../../../types/backgroundTask'
 import {
@@ -48,6 +48,7 @@ const TaskCenter: React.FC<TaskCenterProps> = ({
   onCancelBackgroundTask,
   onClearCompletedBackgroundTasks
 }) => {
+  const [copiedErrorTaskId, setCopiedErrorTaskId] = useState<string | null>(null)
   const hasTasks = exportTasks.length > 0 || backgroundTasks.length > 0
   
   if (!hasTasks) return null
@@ -59,6 +60,16 @@ const TaskCenter: React.FC<TaskCenterProps> = ({
   const handleClearCompletedTasks = () => {
     onClearCompletedExportTasks()
     onClearCompletedBackgroundTasks()
+  }
+
+  const handleCopyErrorText = async (taskId: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedErrorTaskId(taskId)
+      setTimeout(() => setCopiedErrorTaskId((prev) => (prev === taskId ? null : prev)), 1600)
+    } catch {
+      // 剪贴板不可用时静默失败
+    }
   }
 
   return (
@@ -115,7 +126,19 @@ const TaskCenter: React.FC<TaskCenterProps> = ({
                 {!labelAlreadyHasCount && <span className="count">{countText}</span>}
               </div>
               
-              {task.error && <div className="task-error-msg">{task.error}</div>}
+              {task.error && (
+                <div className="task-error-msg">
+                  <span className="task-error-text">{task.error}</span>
+                  <button
+                    className="task-error-copy-btn"
+                    onClick={() => { void handleCopyErrorText(task.id, task.error || '') }}
+                    title="复制错误信息"
+                  >
+                    {copiedErrorTaskId === task.id ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedErrorTaskId === task.id ? '已复制' : '复制'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           )

@@ -241,24 +241,6 @@ const mapWeliveEventToProgress = (event: WeliveExportEvent): any | null => {
   }
 }
 
-const collectWeliveErrorText = (result: any): string => {
-  const parts = [
-    result?.error,
-    result?.stderr,
-    ...Object.values(result?.failedSessionErrors || {})
-  ]
-  return parts
-    .map((value) => String(value || '').trim())
-    .filter(Boolean)
-    .join('\n')
-}
-
-const isWeliveNativeCrashResult = (result: any): boolean => {
-  if (!result || result.success) return false
-  const text = collectWeliveErrorText(result)
-  return /3221225477|0x?c0000005|-1073741819/i.test(text)
-}
-
 async function runWeliveEngine() {
   const path = require('path') as typeof import('path')
   const fs = require('fs') as typeof import('fs')
@@ -573,22 +555,26 @@ async function runLegacyEngine() {
 
 async function run() {
   if (shouldUseWeliveEngine()) {
-    const result = await runWeliveEngine()
-    if (!isWeliveNativeCrashResult(result)) {
-      flushProgress()
-      flushCreatedPaths()
-      parentPort?.postMessage({
-        type: 'export:result',
-        data: result
-      })
-      return
+    try {
+      const result = await runWeliveEngine()
+      if (result?.success !== false) {
+        flushProgress()
+        flushCreatedPaths()
+        parentPort?.postMessage({
+          type: 'export:result',
+          data: result
+        })
+        return
+      }
+    } catch (error) {
+      console.error('[export-worker] WeLive 导出引擎异常，切换到兼容引擎:', error)
     }
 
     queueProgress({
       current: 0,
       total: Array.isArray(config.sessionIds) ? config.sessionIds.length : 1,
       phase: 'preparing',
-      phaseLabel: 'WeLive 导出引擎异常退出，正在切换兼容导出引擎'
+      phaseLabel: 'WeLive 导出引擎不可用，正在切换兼容导出引擎'
     })
     flushProgress()
     flushCreatedPaths()
